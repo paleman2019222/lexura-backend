@@ -1,9 +1,8 @@
 'use strict'
 
 var User = require('../models/user.model');
-
-
 const bcryptjs = require('bcryptjs');
+const jwt = require('../services/jwt'); 
 
 async function createInit(req, res) {
     let user = new User();
@@ -101,10 +100,45 @@ async function createUser(req, res) {
     }
 }
 
+async function login(req, res) {
+    const params = req.body;
+
+    if (params.email && params.password) {
+        try {
+            const userFind = await User.findOne({ email: params.email });
+
+            if (userFind) {
+                // Comparación de contraseña
+                const passwordCheck = await bcryptjs.compare(params.password, userFind.password);
+
+                if (passwordCheck) {
+                    // Generación de token y envío de datos del usuario
+                    if (params.gettoken) {
+                        return res.status(200).send({
+                            token: jwt.createToken(userFind),
+                            user: userFind
+                        });
+                    } else {
+                        return res.status(200).send({ message: 'Sesión iniciada correctamente', user: userFind });
+                    }
+                } else {
+                    return res.status(404).send({ message: "Usuario o contraseña incorrecto(s)" });
+                }
+            } else {
+                return res.status(404).send({ message: "Usuario no encontrado" });
+            }
+        } catch (err) {
+            console.log('Error al buscar usuario:', err);
+            return res.status(500).send({ message: 'Error al buscar usuario' });
+        }
+    } else {
+        return res.status(400).send({ message: 'Ingrese usuario y contraseña' });
+    }
+}
 
 
 module.exports ={
 createInit,
-createUser
-
+createUser,
+login
 }
